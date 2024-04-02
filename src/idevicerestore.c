@@ -669,10 +669,10 @@ int idevicerestore_start(struct idevicerestore_client_t* client)
 
 	if (client->mode == MODE_RESTORE) {
 		if (client->flags & FLAG_ALLOW_RESTORE_MODE) {
+			tss_enabled = 0;
 			if (!client->root_ticket) {
 				client->root_ticket = (void*)strdup("");
 				client->root_ticket_len = 0;
-				tss_enabled = 0;
 			}
 		} else {
 			if (restore_reboot(client) < 0) {
@@ -1184,9 +1184,14 @@ int idevicerestore_start(struct idevicerestore_client_t* client)
 	}
 
 	idevicerestore_progress(client, RESTORE_STEP_PREPARE, 0.2);
+	if (client->mode == MODE_RESTORE) {
+		if (client->flags & FLAG_ALLOW_RESTORE_MODE) {
+			tss_enabled = 0;
+		}
+	}
 
 	/* retrieve shsh blobs if required */
-	if (tss_enabled && !client->root_ticket) {
+	if (tss_enabled) {
 		int stashbag_commit_required = 0;
 
 		if (client->mode == MODE_NORMAL && !(client->flags & FLAG_ERASE) && !(client->flags & FLAG_SHSHONLY)) {
@@ -1270,12 +1275,7 @@ int idevicerestore_start(struct idevicerestore_client_t* client)
 				return -1;
 			}
 		}
-	} else if (tss_enabled) {
-        client->tss = plist_new_dict();
-        plist_dict_set_item(client->tss, "ApImg4Ticket",
-                            plist_new_data((const char *)client->root_ticket,
-                                           client->root_ticket_len));
-    }
+	}
 
 	if (client->flags & FLAG_QUIT) {
 		return -1;
